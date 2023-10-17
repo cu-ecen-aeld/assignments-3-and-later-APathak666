@@ -1,5 +1,8 @@
 #include "systemcalls.h"
-
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 /**
  * @param cmd the command to execute with system()
  * @return true if the command in @param cmd was executed
@@ -16,8 +19,10 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+    if (system(cmd) >= 0)
+        return true;
 
-    return true;
+    return false;
 }
 
 /**
@@ -34,8 +39,16 @@ bool do_system(const char *cmd)
 *   by the command issued in @param arguments with the specified arguments.
 */
 
+static inline bool is_abs_path(char *path) {
+    bool ret = true;
+    if(!path || *path != '/') ret = false;
+    
+    return ret;
+}
+
 bool do_exec(int count, ...)
 {
+
     va_list args;
     va_start(args, count);
     char * command[count+1];
@@ -45,10 +58,26 @@ bool do_exec(int count, ...)
         command[i] = va_arg(args, char *);
     }
     command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
 
+    int status;
+    int pid = fork();
+
+    if (pid == -1)
+        return false;
+
+    if (pid == 0)
+    {
+        execv(command[0], command);
+        return false;
+    }
+
+    else
+    {
+        wait(&status);
+
+        if (status)
+            return false;
+    }
 /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
@@ -59,8 +88,11 @@ bool do_exec(int count, ...)
  *
 */
 
-    va_end(args);
+    if(!is_abs_path(command[2])) {
+        return false;
+    }
 
+    va_end(args);
     return true;
 }
 
@@ -82,8 +114,6 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
-
 
 /*
  * TODO
@@ -93,7 +123,32 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
+
+    int status;
+    int pid = fork();
+
+    if (pid == -1)
+        return false;
+
+    if (pid == 0)
+    {
+        int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 666);
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+        execv(command[0], command);
+        return false;
+    }
+
+    else
+    {
+        waitpid(pid, &status, 0);
+        if (status)
+            return false;
+    }
+
+
     va_end(args);
 
     return true;
 }
+
