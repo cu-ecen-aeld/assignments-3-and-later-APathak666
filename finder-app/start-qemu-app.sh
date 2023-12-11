@@ -7,7 +7,7 @@ set -e
 OUTDIR=$1
 
 if [ -z "${OUTDIR}" ]; then
-    OUTDIR=/tmp/aeld
+    OUTDIR=/tmp/aesd-autograder
     echo "No outdir specified, using ${OUTDIR}"
 fi
 
@@ -26,8 +26,8 @@ fi
 
 echo "Booting the kernel"
 # See trick at https://superuser.com/a/1412150 to route serial port output to file
-qemu-system-aarch64 \
-        -m 256M \
+sudo qemu-system-aarch64 \
+        -m 4096M \
         -M virt \
         -cpu cortex-a53 \
         -nographic \
@@ -35,4 +35,5 @@ qemu-system-aarch64 \
         -kernel ${KERNEL_IMAGE} \
         -chardev stdio,id=char0,mux=on,logfile=${OUTDIR}/serial.log,signal=off \
         -serial chardev:char0 -mon chardev=char0 \
-        -append "rdinit=/home/autorun-qemu.sh console=ttyAMA0" -initrd ${INITRD_IMAGE}
+        -append "rdinit=/home/autorun-qemu.sh" -initrd ${INITRD_IMAGE} \
+        # -append "root=/dev/null"
